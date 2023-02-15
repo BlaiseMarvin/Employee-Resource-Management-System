@@ -33,7 +33,7 @@ router.post('/',async(req,res)=>{
 
     
     const user=new User(_.pick(req.body,['firstName','lastName','email','password','position','department']));
-
+    const token=user.generateAuthToken();
     const salt=await bcrypt.genSalt(10);
     user.password=await bcrypt.hash(user.password,salt);
 
@@ -43,7 +43,8 @@ router.post('/',async(req,res)=>{
     const systemToken = crypto.randomBytes(4).toString('hex');
     const temporaryRecord=new TempUser({
                                             id: user._id,
-                                            systemCode:systemToken
+                                            systemCode:systemToken,
+                                            token:token
                                         });
     // await temporaryRecord.save(); 
 
@@ -87,32 +88,41 @@ router.post('/confirm',async (req,res)=>{
     const { error } = tempValidate(req.body);
     if(error) return res.status(400).send(error.details[0].message);
 
-    let user_id=await User.findOne({email:req.body.email}).select('_id');
-    
-    if(!user_id) return res.status(400).send('You have to sign up before confirming your account');
-    
-    user_id=user_id._doc._id;
-    
-    let systemCode=await TempUser.findOne({id:user_id}).select('systemCode');
-    
-    if(!systemCode) return res.status(400).send('You have to sign up before confirming your account');
+    let user=await User.find({email:req.body.email}).select('_id').limit(1);
 
-    systemCode=systemCode.systemCode;
+    if(!user.length) return res.status(400).send('You have to sign up before confirming your account');
+
+    let user_id=user[0]._doc._id;
+    
+    console.log(user_id)
+    let temporaryUser=await TempUser.find({id:user_id}).limit(1);;
+
+    if(!temporaryUser.length) return res.status(400).send('You need to sign up before confirming your account')
+    
+    const token=temporaryUser[0]._doc.token
+    const systemCode=temporaryUser[0]._doc.systemCode
+
+    // if(!systemCode) return res.status(400).send('Yconst token=user.generateAuthToken();');
+
+    // systemCode=systemCode.systemCode;
 
     if(systemCode===req.body.code){
         
         try{
-        
-            new Fawn.Task()
-            .update('users',{_id:user_id},{confirmed:true})
-            .remove("unconfirmedusers",{id:user_id})
-            .run()
+            await User.update({_id:user_id},{ $set:{confirmed:true}});
+            await TempUser.deleteOne({id:user_id});
+            
+            // new Fawn.Task()
+            // .update('users',{_id:user_id},{confirmed:true})
+            // .remove("unconfirmedusers",{id:user_id})
+            // .run()
 
-            return res.status(200).send(` ${user_id} confirmed`);
+            
+            return res.header('x-auth-token',token).status(200).send(` ${user_id} confirmed`);
 
         }
         catch(e){
-            return res.status(500).send('Unable to confirm account');
+            return res.status(500).send(e.message);
         }
             
     } else{

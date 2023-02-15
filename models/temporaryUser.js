@@ -11,6 +11,10 @@ const TemporaryUser=mongoose.model('unconfirmeduser',new mongoose.Schema({
                                                                             systemCode:{
                                                                             type:String,
                                                                             required:true
+                                                                            },
+                                                                            token:{
+                                                                                type:String,
+                                                                                required:true
                                                                             }
 
                                                                                                 }))
