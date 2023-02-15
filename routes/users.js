@@ -9,6 +9,7 @@ const mongoose=require('mongoose');
 const crypto=require('crypto');
 const { TempUser,tempValidate }=require('../models/temporaryUser');
 const sgMail=require('@sendgrid/mail');
+const {RecoverAccount,validateRecoveryRequest,validateCode}=require('../models/temporaryRecoveryUser');
 const API_KEY=config.get('API_KEY');
 
 Fawn.init(mongoose);
@@ -125,10 +126,81 @@ router.post('/confirm',async (req,res)=>{
 // account recovery => reset password? 
 router.post('/recovery',async (req,res)=>{
     // user sends us their email 
-    // we send them an email with a code
-    // they verify the code
-    // then we reset their password
+    const { error }=validateRecoveryRequest(req.body);
+    if(error) return res.status(400).send(error.details[0].message);
+
+    // does the user exist in the database
+    const user=await User.findOne({email:req.body.email});
+    if(!user) return res.status(400).send('User does not exist');
+
+    // send an email with a code
+    const systemToken = crypto.randomBytes(4).toString('hex');
+    const temporaryRecoveryRecord=new RecoverAccount({
+                                        email:req.body.email,
+                                        systemCode:systemToken
+                                        });
+
+    
+
+        
+    await temporaryRecoveryRecord.save();
+
+    const message={
+        to:user.email,
+        from: 'bmrusoke@kiiramotors.com',
+        subject: 'Recovery Code',
+        text:`Your recovery code is ${systemToken}`
+    }
+    await sgMail.send(message);
+
+    
+    res.status(200).send('Code sent');
+
 })
+
+router.post('/recovery/confirm', async (req,res)=>{
+    const { error }=validateCode(req.body)
+    if(error) return res.status(400).send(error.details[0].message);
+    
+    const user=await User.findOne({email:req.body.email});
+    if(!user) return res.status(400).send('User does not exist, please create account instead');
+
+    // extract this user's last code in the database
+    let latestRecoveryCode=await RecoverAccount.find({email:req.body.email}).sort({date:-1}).select({systemCode:1}).limit(1)
+    
+    
+    if(!latestRecoveryCode.length) return res.status(400).send('Request for a recovery code first');
+
+    latestRecoveryCode=latestRecoveryCode[0]._doc.systemCode;
+    // compare this code with the users' code
+    if(req.body.code===latestRecoveryCode){
+        // reset their password
+        const salt=await bcrypt.genSalt(10);
+        const newPassword=await bcrypt.hash(req.body.password,salt);
+
+        const updatedUser=await User.findByIdAndUpdate(user._id,{
+                                                                    $set:{
+                                                                        password:newPassword
+                                                                    }
+                                                                                            },{new:true});
+        
+
+        // delete multiple records from the recovery database 
+        await RecoverAccount.deleteMany({email:req.body.email});                                                                                    
+        
+        return res.status(200).send(_.pick(updatedUser,['_id','firstName','lastName','email','position','department','confirmed']));
+                                                                               
+
+    } else{
+        return res.status(400).send('Invalid Recovery Code');
+    }
+
+
+})
+// router.get('/recoveryread', async (req,res)=>{
+//     const reads=await RecoverAccount.find().sort({date:-1}).limit(1)
+//     res.send(reads);
+// })
 
 
 module.exports=router;
