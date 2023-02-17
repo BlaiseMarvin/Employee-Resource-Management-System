@@ -17,9 +17,9 @@ sgMail.setApiKey(API_KEY);
 
 
 router.get('/',async (req,res)=>{
-    const users=await User.find().sort('firstName').select('-password')
+    const users=await User.find().sort('firstName').select('-password');
     res.status(200).send(users);
-})
+});
 
 
 router.post('/',async(req,res)=>{
@@ -94,7 +94,7 @@ router.post('/confirm',async (req,res)=>{
 
     let user_id=user[0]._doc._id;
     
-    console.log(user_id)
+    // console.log(user_id)
     let temporaryUser=await TempUser.find({id:user_id}).limit(1);;
 
     if(!temporaryUser.length) return res.status(400).send('You need to sign up before confirming your account')

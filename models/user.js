@@ -67,7 +67,7 @@ function validateUser(user){
     const schema=Joi.object({
         firstName:Joi.string().alphanum().min(3).max(50).required(),
         lastName:Joi.string().alphanum().min(3).max(50).required(),
-        email:Joi.string().email({minDomainSegments: 2, tlds: { allow: ['com'] }}),
+        email:Joi.string().email({minDomainSegments: 2, tlds: { allow: ['com'] }}).required(),
         password:passwordComplexity(complexityOptions).required(),
         repeat_password: Joi.ref('password'),
         position:Joi.string().min(1).max(100).required(),

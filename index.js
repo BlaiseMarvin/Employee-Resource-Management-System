@@ -10,7 +10,7 @@ if(!config.get('jwtPrivateKey') || !config.get('API_KEY')){
 
 const home=require('./routes/home');
 const user=require('./routes/users');
-const http=require('http')
+const http=require('http');
 const server=http.createServer(app);
 const socketio=require('socket.io');
 const io=socketio(server);
