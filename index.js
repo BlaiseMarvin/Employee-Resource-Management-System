@@ -10,6 +10,7 @@ if(!config.get('jwtPrivateKey') || !config.get('API_KEY')){
 
 const home=require('./routes/home');
 const user=require('./routes/users');
+const auth=require('./routes/auth');
 const http=require('http');
 const server=http.createServer(app);
 const socketio=require('socket.io');
@@ -17,6 +18,7 @@ const io=socketio(server);
 
 app.use('/',home);
 app.use('/api/users',user);
+app.use('/api/auth',auth);
 
 const mongoose=require('mongoose');
 

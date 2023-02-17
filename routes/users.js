@@ -7,6 +7,7 @@ const bcrypt=require('bcrypt');
 const Fawn=require('fawn');
 const mongoose=require('mongoose');
 const crypto=require('crypto');
+const auth=require('../middleware/auth');
 const { TempUser,tempValidate }=require('../models/temporaryUser');
 const sgMail=require('@sendgrid/mail');
 const {RecoverAccount,validateRecoveryRequest,validateCode}=require('../models/temporaryRecoveryUser');
@@ -16,7 +17,7 @@ Fawn.init(mongoose);
 sgMail.setApiKey(API_KEY);
 
 
-router.get('/',async (req,res)=>{
+router.get('/',auth,async (req,res)=>{
     const users=await User.find().sort('firstName').select('-password');
     res.status(200).send(users);
 });
